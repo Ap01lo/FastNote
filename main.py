@@ -116,6 +116,10 @@ class NoteApp:
         # 创建系统托盘图标
         self.create_tray_icon()
         
+        # 启动托盘图标线程
+        self.tray_thread = threading.Thread(target=self.icon.run, daemon=True)
+        self.tray_thread.start()
+        
         # 启动快捷键监听线程
         self.hotkey_thread = threading.Thread(target=self.start_hotkey_listener, daemon=True)
         self.hotkey_thread.start()
@@ -523,21 +527,18 @@ class NoteApp:
     
     def minimize_to_tray(self):
         self.root.withdraw()  # 隐藏窗口
-        if self.icon is not None and not self.icon._icon:
-            self.icon.run()  # 显示托盘图标
+
     
     def show_window(self):
-        if self.icon is not None and self.icon._icon is not None:
-            self.icon.stop()  # 停止托盘图标
+
         self.root.deiconify()  # 显示窗口
         self.root.lift()  # 将窗口提升到最前
         self.center_window()  # 居中显示窗口
     
     def quit_window(self):
-        if self.icon is not None and self.icon._icon is not None:
-            self.icon.stop()  # 停止托盘图标
-        self.root.quit()  # 退出主循环
-        self.root.destroy()  # 销毁窗口
+        if self.icon:
+            self.icon.stop()
+        self.root.quit()
     
     def save_note(self):
         title = self.title_var.get().strip()
