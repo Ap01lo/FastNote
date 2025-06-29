@@ -90,6 +90,9 @@ class NoteApp:
         scrollbar.grid(row=1, column=1, sticky="ns")
         self.tree.configure(yscrollcommand=scrollbar.set)
         
+        # 绑定窗口大小改变事件
+        self.preview_frame.bind("<Configure>", self._on_preview_resize)
+        
         # 设置窗口最小尺寸
         self.root.minsize(1000, 600)
         
@@ -563,6 +566,43 @@ class NoteApp:
             self.preview_content.delete("1.0", tk.END)
             self.preview_content.config(state="disabled")
 
+    def _on_preview_resize(self, event):
+        # 只有当有图片显示时才重新调整大小
+        if hasattr(self, 'current_image_data') and self.current_image_data:
+            self.preview_content.config(state="normal")
+            self.preview_content.delete("1.0", tk.END)
+            
+            img = Image.open(io.BytesIO(self.current_image_data))
+            
+            # 获取新的预览区域大小
+            preview_width = self.preview_content.winfo_width()
+            preview_height = self.preview_content.winfo_height()
+            
+            img = self._resize_image(img, preview_width, preview_height)
+            self.current_image_photo = ImageTk.PhotoImage(img)
+            
+            self.preview_content.image_create("1.0", image=self.current_image_photo)
+            self.preview_content.insert("1.0", "\n\n")
+            self.preview_content.config(state="disabled")
+
+    def _resize_image(self, img, width, height):
+        if width <= 1 or height <= 1: # 避免除以零或负数
+            return img
+        
+        original_width, original_height = img.size
+        
+        # 计算缩放比例
+        ratio_w = width / original_width
+        ratio_h = height / original_height
+        
+        # 选择较小的比例以确保图片完全显示
+        ratio = min(ratio_w, ratio_h)
+        
+        new_width = int(original_width * ratio)
+        new_height = int(original_height * ratio)
+        
+        return img.resize((new_width, new_height), Image.LANCZOS)
+
     def on_select(self, event):
         selected_items = self.tree.selection()
         if not selected_items:
@@ -592,18 +632,16 @@ class NoteApp:
                 # 调整图片大小以适应预览区域
                 preview_width = self.preview_content.winfo_width()
                 preview_height = self.preview_content.winfo_height()
-                if preview_width > 1 and preview_height > 1:  # 确保窗口已经渲染
-                    img.thumbnail((preview_width, preview_height))
-                else:  # 如果窗口尚未渲染，使用默认大小
-                    img.thumbnail((800, 600))
+                # 调整图片大小以适应预览区域
+                img = self._resize_image(img, preview_width, preview_height)
                 
                 # 转换为PhotoImage以在Tkinter中显示
-                photo = ImageTk.PhotoImage(img)
+                self.current_image_data = content # 存储原始图片数据
+                self.current_image_photo = ImageTk.PhotoImage(img) # 存储PhotoImage引用
                 
                 # 在文本框中插入图片
-                self.preview_content.image = photo  # 保持引用
+                self.preview_content.image_create("1.0", image=self.current_image_photo)
                 self.preview_content.insert("1.0", "\n\n")  # 添加一些空行
-                self.preview_content.image_create("1.0", image=photo)
             else:
                 # 文本类型直接显示
                 self.preview_content.insert("1.0", content)
