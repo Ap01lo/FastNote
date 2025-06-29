@@ -248,6 +248,9 @@ class NoteApp:
         dialog.bind('<Escape>', lambda e: cancel())
     
     def handle_screenshot(self):
+        # 隐藏主窗口
+        self.root.withdraw()
+
         # 创建提示窗口
         hint_window = tk.Toplevel()
         hint_window.attributes('-topmost', True)
@@ -283,21 +286,11 @@ class NoteApp:
             nonlocal selection_rect, selection_mask
             if selection_rect:
                 canvas.delete(selection_rect)
-            if selection_mask:
-                canvas.delete(selection_mask)
-            
-            # 创建遮罩（四个矩形覆盖未选择区域）
-            selection_mask = [
-                canvas.create_rectangle(0, 0, screen_width, y1, fill='gray', stipple='gray50'),
-                canvas.create_rectangle(0, y2, screen_width, screen_height, fill='gray', stipple='gray50'),
-                canvas.create_rectangle(0, y1, x1, y2, fill='gray', stipple='gray50'),
-                canvas.create_rectangle(x2, y1, screen_width, y2, fill='gray', stipple='gray50')
-            ]
+
             
             # 创建选择框
             selection_rect = canvas.create_rectangle(
-                x1, y1, x2, y2,
-                outline='red', width=2
+                x1, y1, x2, y2, outline="#00FF00", width=5, dash=(2, 2)
             )
         
         def on_mouse_down(event):
@@ -332,6 +325,9 @@ class NoteApp:
                 
                 # 显示保存对话框
                 self.create_save_dialog(screenshot)
+
+                # 恢复主窗口
+                self.root.deiconify()
         
         # 绑定鼠标事件
         canvas.bind('<Button-1>', on_mouse_down)
@@ -342,6 +338,7 @@ class NoteApp:
         def cancel_screenshot(event):
             hint_window.destroy()
             overlay.destroy()
+            self.root.deiconify() # 恢复主窗口
         
         overlay.bind('<Escape>', cancel_screenshot)
     
