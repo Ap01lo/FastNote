@@ -35,7 +35,7 @@ class NoteApp:
         
         # 初始化样式
         self.style = ttk.Style()
-        self.style.configure("TButton", font=('Microsoft YaHei UI', 12), padding=10)
+
         
         # 笔记列表
         self.tree = ttk.Treeview(self.list_frame, columns=("ID", "标题", "类型", "创建时间", "更新时间"), 
@@ -186,15 +186,15 @@ class NoteApp:
         
         # 设置窗口大小和位置
         window_width = 400
-        window_height = 150
+        window_height = 180
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 创建标题输入框
-        ttk.Label(dialog, text="请输入标题：", font=('Arial', 10)).pack(pady=10)
+        ttk.Label(dialog, text="请输入标题：", font=('Microsoft YaHei UI', 12)).pack(pady=10)
         title_var = tk.StringVar()
-        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Arial', 10), width=40)
+        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Microsoft YaHei UI', 12), width=40)
         title_entry.pack(pady=5)
         # 确保对话框显示后立即获得焦点
         dialog.lift()
@@ -229,25 +229,23 @@ class NoteApp:
         def cancel():
             dialog.destroy()
         
+        # 显示快捷键提示
+        ttk.Label(dialog, text="快捷键：Enter 保存，ESC 取消", foreground='gray').pack(side=tk.BOTTOM, pady=5)
+
         # 按钮
         button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=15)
+        button_frame.pack(pady=10)
         
-        self.style.configure("TButton", font=('Arial', 10), padding=8)
-
         save_button = ttk.Button(button_frame, text="保存", command=save)
-        save_button.pack(side=tk.LEFT, padx=10)
+        save_button.pack(side=tk.LEFT, padx=20)
 
-        cancel_button = ttk.Button(button_frame, text="取消", command=cancel)
-        cancel_button.pack(side=tk.LEFT, padx=10)
+        cancel_button = ttk.Button(button_frame, text="取消", command=dialog.destroy)
+        cancel_button.pack(side=tk.LEFT, padx=20)
         
         # 绑定回车键为保存
         dialog.bind('<Return>', lambda e: save())
         # 绑定ESC键为取消
         dialog.bind('<Escape>', lambda e: cancel())
-        
-        # 显示快捷键提示
-        ttk.Label(dialog, text="快捷键：Enter 保存，ESC 取消", foreground='gray').pack(side=tk.BOTTOM, pady=5)
     
     def handle_screenshot(self):
         # 创建提示窗口
@@ -365,15 +363,15 @@ class NoteApp:
         
         # 设置窗口大小和位置
         window_width = 400
-        window_height = 150
+        window_height = 180
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 创建标题输入框
-        ttk.Label(dialog, text="请输入标题：", font=('Arial', 10)).pack(pady=10)
+        ttk.Label(dialog, text="请输入标题：", font=('Microsoft YaHei UI', 12)).pack(pady=10)
         title_var = tk.StringVar()
-        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Arial', 10), width=40)
+        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Microsoft YaHei UI', 12), width=40)
         title_entry.pack(pady=5)
         # 确保对话框显示后立即获得焦点
         dialog.lift()
@@ -399,17 +397,18 @@ class NoteApp:
         def cancel():
             dialog.destroy()
         
+        # 显示快捷键提示
+        ttk.Label(dialog, text="快捷键：Enter 保存，ESC 取消", foreground='gray').pack(side=tk.BOTTOM, pady=5)
+
         # 按钮
         button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=15)
+        button_frame.pack(pady=10)
         
-        self.style.configure("TButton", font=('Arial', 10), padding=8)
-
         save_button = ttk.Button(button_frame, text="保存", command=save)
-        save_button.pack(side=tk.LEFT, padx=10)
+        save_button.pack(side=tk.LEFT, padx=20)
 
         cancel_button = ttk.Button(button_frame, text="取消", command=cancel)
-        cancel_button.pack(side=tk.LEFT, padx=10)
+        cancel_button.pack(side=tk.LEFT, padx=20)
         
         # 绑定回车键为保存
         dialog.bind('<Return>', lambda e: save())
@@ -454,15 +453,15 @@ class NoteApp:
         
         # 设置窗口大小和位置
         window_width = 400
-        window_height = 300
+        window_height = 390
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 创建标题输入框
-        ttk.Label(dialog, text="请输入标题：", font=('Arial', 10)).pack(pady=10)
+        ttk.Label(dialog, text="请输入标题：", font=('Microsoft YaHei UI', 12)).pack(pady=10)
         title_var = tk.StringVar()
-        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Arial', 10), width=40)
+        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Microsoft YaHei UI', 12), width=40)
         title_entry.pack(pady=5)
         # 确保对话框显示后立即获得焦点
         dialog.lift()
@@ -477,8 +476,8 @@ class NoteApp:
         dialog.after(100, ensure_focus)
         
         # 创建内容输入框
-        ttk.Label(dialog, text="请输入内容：", font=('Arial', 10)).pack(pady=10)
-        content_text = tk.Text(dialog, font=('Arial', 10), wrap="word", width=40, height=8)
+        ttk.Label(dialog, text="请输入内容：", font=('Microsoft YaHei UI', 12)).pack(pady=10)
+        content_text = tk.Text(dialog, font=('Microsoft YaHei UI', 12), wrap="word", width=40, height=8)
         content_text.pack(pady=5)
         
         def save():
@@ -494,17 +493,18 @@ class NoteApp:
         def cancel():
             dialog.destroy()
         
+        # 显示快捷键提示
+        ttk.Label(dialog, text="快捷键：Ctrl+S 保存，ESC 取消", foreground='gray').pack(side=tk.BOTTOM, pady=5)
+
         # 按钮
         button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=15)
+        button_frame.pack(pady=10)
         
-        self.style.configure("TButton", font=('Arial', 10), padding=8)
-
         save_button = ttk.Button(button_frame, text="保存", command=save)
-        save_button.pack(side=tk.LEFT, padx=10)
+        save_button.pack(side=tk.LEFT, padx=20)
 
         cancel_button = ttk.Button(button_frame, text="取消", command=dialog.destroy)
-        cancel_button.pack(side=tk.LEFT, padx=10)
+        cancel_button.pack(side=tk.LEFT, padx=20)
         
         # 绑定回车键为保存（当焦点在标题输入框时）
         title_entry.bind('<Return>', lambda e: content_text.focus())
@@ -512,9 +512,6 @@ class NoteApp:
         dialog.bind('<Control-s>', lambda e: save())
         # 绑定ESC键为取消
         dialog.bind('<Escape>', lambda e: cancel())
-        
-        # 显示快捷键提示
-        ttk.Label(dialog, text="快捷键：Ctrl+S 保存，ESC 取消", foreground='gray').pack(side=tk.BOTTOM, pady=5)
     
     def handle_direct_input(self):
         # 显示输入对话框
