@@ -84,11 +84,11 @@ class NoteApp:
         self.tree.heading("更新时间", text="更新时间", anchor="center")
         
         # 设置列宽
-        self.tree.column("ID", width=50, stretch=tk.NO, anchor="center")
-        self.tree.column("标题", width=200, stretch=tk.YES, anchor="w")
-        self.tree.column("类型", width=80, stretch=tk.NO, anchor="center")
-        self.tree.column("创建时间", width=150, stretch=tk.NO, anchor="center")
-        self.tree.column("更新时间", width=150, stretch=tk.NO, anchor="center")
+        self.tree.column("ID", stretch=tk.YES, anchor="center")
+        self.tree.column("标题", stretch=tk.YES, anchor="w")
+        self.tree.column("类型", stretch=tk.YES, anchor="center")
+        self.tree.column("创建时间", stretch=tk.YES, anchor="center")
+        self.tree.column("更新时间", stretch=tk.YES, anchor="center")
         
         # 绑定选择事件
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
