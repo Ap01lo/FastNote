@@ -9,9 +9,7 @@ class DatabaseManager:
     def init_db(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            # 先删除已存在的表
-            cursor.execute('DROP TABLE IF EXISTS notes')
-            # 重新创建表
+            # 创建表（如果不存在）
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS notes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
