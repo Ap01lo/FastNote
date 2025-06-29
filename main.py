@@ -19,58 +19,50 @@ class NoteApp:
         # 创建主框架
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
         
-        self.main_frame = ttk.Frame(self.root, padding="15")
-        self.main_frame.grid(row=0, column=0, sticky="nsew")
+        # 左侧笔记列表框架
+        self.list_frame = ttk.Frame(self.root, padding="15")
+        self.list_frame.grid(row=0, column=0, sticky="nsew")
+        self.list_frame.grid_rowconfigure(1, weight=1)
+        self.list_frame.grid_columnconfigure(0, weight=1)
         
-        # 配置主框架的行列权重
-        self.main_frame.grid_rowconfigure(0, weight=0)
-        self.main_frame.grid_rowconfigure(1, weight=1)
-        self.main_frame.grid_rowconfigure(2, weight=0)
-        self.main_frame.grid_rowconfigure(3, weight=8)
-        self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_columnconfigure(1, weight=1)
-        self.main_frame.grid_columnconfigure(2, weight=1)
+        # 右侧预览框架
+        self.preview_frame = ttk.Frame(self.root, padding="15")
+        self.preview_frame.grid(row=0, column=1, sticky="nsew")
+        self.preview_frame.grid_rowconfigure(1, weight=1)
+        self.preview_frame.grid_columnconfigure(0, weight=1)
         
-        # 标题输入
-        ttk.Label(self.main_frame, text="标题:", font=('Microsoft YaHei UI', 12)).grid(row=0, column=0, sticky="w", pady=(0,5))
-        self.title_var = tk.StringVar()
-        self.title_entry = ttk.Entry(self.main_frame, textvariable=self.title_var, font=('Microsoft YaHei UI', 14))
-        self.title_entry.grid(row=0, column=1, columnspan=3, sticky="ew", pady=(0,5))
-        
-        # 内容输入
-        ttk.Label(self.main_frame, text="内容:", font=('Microsoft YaHei UI', 12)).grid(row=1, column=0, sticky="nw", pady=(0,5))
-        self.content_text = tk.Text(self.main_frame, font=('Microsoft YaHei UI', 14), wrap="word", height=5)
-        self.content_text.grid(row=1, column=1, columnspan=3, sticky="nsew", pady=(0,5))
-        
-        # 按钮区域
-        button_frame = ttk.Frame(self.main_frame)
-        button_frame.grid(row=2, column=0, columnspan=3, pady=(10, 15), sticky="ew")
-        button_frame.grid_columnconfigure(0, weight=1)
-        button_frame.grid_columnconfigure(1, weight=1)
-        button_frame.grid_columnconfigure(2, weight=1)
-        button_frame.grid_columnconfigure(3, weight=1)
-
         # 初始化样式
         self.style = ttk.Style()
         self.style.configure("TButton", font=('Microsoft YaHei UI', 12), padding=10)
-
-        self.save_button = ttk.Button(button_frame, text="保存笔记", command=self.save_note)
-        self.save_button.grid(row=0, column=0, sticky="ew", padx=5)
-
-        self.clear_button = ttk.Button(button_frame, text="清空输入", command=self.clear_inputs)
-        self.clear_button.grid(row=0, column=1, sticky="ew", padx=5)
-
-        self.refresh_button = ttk.Button(button_frame, text="刷新笔记", command=self.refresh_notes)
-        self.refresh_button.grid(row=0, column=2, sticky="ew", padx=5)
-
-        self.delete_button = ttk.Button(button_frame, text="删除笔记", command=self.delete_note)
-        self.delete_button.grid(row=0, column=3, sticky="ew", padx=5)
         
         # 笔记列表
-        self.tree = ttk.Treeview(self.main_frame, columns=("ID", "标题", "类型", "创建时间", "更新时间"), 
+        self.tree = ttk.Treeview(self.list_frame, columns=("ID", "标题", "类型", "创建时间", "更新时间"), 
                                show="headings", style="Custom.Treeview")
-        self.tree.grid(row=3, column=0, columnspan=3, sticky="nsew", pady=(10,0))
+        self.tree.grid(row=1, column=0, sticky="nsew")
+        
+        # 预览区域
+        self.preview_title = ttk.Label(self.preview_frame, text="", font=('Microsoft YaHei UI', 14, 'bold'))
+        self.preview_title.grid(row=0, column=0, sticky="w", pady=(0, 10))
+        
+        # 创建预览内容的容器框架
+        preview_container = ttk.Frame(self.preview_frame)
+        preview_container.grid(row=1, column=0, sticky="nsew")
+        preview_container.grid_rowconfigure(0, weight=1)
+        preview_container.grid_columnconfigure(0, weight=1)
+        
+        # 预览内容和滚动条
+        self.preview_content = tk.Text(preview_container, font=('Microsoft YaHei UI', 12), wrap="word", state="disabled")
+        self.preview_content.grid(row=0, column=0, sticky="nsew")
+        
+        preview_scrollbar = ttk.Scrollbar(preview_container, orient="vertical", command=self.preview_content.yview)
+        preview_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.preview_content.configure(yscrollcommand=preview_scrollbar.set)
+        
+        # 删除按钮
+        self.delete_button = ttk.Button(self.list_frame, text="删除笔记", command=self.delete_note)
+        self.delete_button.grid(row=0, column=0, sticky="e", pady=(0, 10))
         
         # 设置Treeview样式
         self.style.configure("Custom.Treeview", font=('Microsoft YaHei UI', 12), rowheight=30)
@@ -94,12 +86,12 @@ class NoteApp:
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
         
         # 添加滚动条
-        scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        scrollbar.grid(row=3, column=3, sticky="ns")
+        scrollbar = ttk.Scrollbar(self.list_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        scrollbar.grid(row=1, column=1, sticky="ns")
         self.tree.configure(yscrollcommand=scrollbar.set)
         
         # 设置窗口最小尺寸
-        self.root.minsize(600, 500)
+        self.root.minsize(1000, 600)
         
         # 设置窗口图标
         try:
@@ -540,22 +532,6 @@ class NoteApp:
             self.icon.stop()
         self.root.quit()
     
-    def save_note(self):
-        title = self.title_var.get().strip()
-        content = self.content_text.get("1.0", tk.END).strip()
-        
-        if not title:
-            messagebox.showwarning("提示", "请输入标题！")
-            return
-            
-        self.db.add_note(title, content, note_type='text')
-        self.refresh_notes()
-        self.clear_inputs()
-    
-    def clear_inputs(self):
-        self.title_var.set("")
-        self.content_text.delete("1.0", tk.END)
-    
     def refresh_notes(self):
         # 清空现有项目
         for item in self.tree.get_children():
@@ -581,11 +557,20 @@ class NoteApp:
                 note_id = self.tree.item(item)['values'][0]
                 self.db.delete_note(note_id)
             self.refresh_notes()
-            self.clear_inputs()
+            # 清空预览区域
+            self.preview_title.config(text="")
+            self.preview_content.config(state="normal")
+            self.preview_content.delete("1.0", tk.END)
+            self.preview_content.config(state="disabled")
 
     def on_select(self, event):
         selected_items = self.tree.selection()
         if not selected_items:
+            # 清空预览区域
+            self.preview_title.config(text="")
+            self.preview_content.config(state="normal")
+            self.preview_content.delete("1.0", tk.END)
+            self.preview_content.config(state="disabled")
             return
             
         item = selected_items[0]
@@ -593,30 +578,37 @@ class NoteApp:
         title, content, note_type = self.db.get_note_content(note_id)
         
         if title and content:
-            self.title_var.set(title)
-            self.content_text.delete("1.0", tk.END)
+            # 更新预览标题
+            self.preview_title.config(text=title)
+            
+            # 清空并更新预览内容
+            self.preview_content.config(state="normal")
+            self.preview_content.delete("1.0", tk.END)
             
             if note_type == 'image':
-                # 创建新窗口显示图片
-                img_window = tk.Toplevel(self.root)
-                img_window.title(title)
-                
                 # 从二进制数据创建图片
                 img = Image.open(io.BytesIO(content))
                 
-                # 调整图片大小以适应屏幕
-                screen_width = self.root.winfo_screenwidth() - 100
-                screen_height = self.root.winfo_screenheight() - 100
-                img.thumbnail((screen_width, screen_height))
+                # 调整图片大小以适应预览区域
+                preview_width = self.preview_content.winfo_width()
+                preview_height = self.preview_content.winfo_height()
+                if preview_width > 1 and preview_height > 1:  # 确保窗口已经渲染
+                    img.thumbnail((preview_width, preview_height))
+                else:  # 如果窗口尚未渲染，使用默认大小
+                    img.thumbnail((800, 600))
                 
                 # 转换为PhotoImage以在Tkinter中显示
                 photo = ImageTk.PhotoImage(img)
-                img_label = ttk.Label(img_window, image=photo)
-                img_label.image = photo  # 保持引用
-                img_label.pack()
+                
+                # 在文本框中插入图片
+                self.preview_content.image = photo  # 保持引用
+                self.preview_content.insert("1.0", "\n\n")  # 添加一些空行
+                self.preview_content.image_create("1.0", image=photo)
             else:
-                # 文本类型直接显示在文本框中
-                self.content_text.insert("1.0", content)
+                # 文本类型直接显示
+                self.preview_content.insert("1.0", content)
+            
+            self.preview_content.config(state="disabled")
 
 def main():
     root = tk.Tk()
