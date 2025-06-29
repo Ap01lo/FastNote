@@ -7,6 +7,7 @@ from PIL import Image, ImageGrab, ImageTk
 import io
 from pynput import keyboard
 import win32clipboard
+import pyperclip
 import threading
 
 class NoteApp:
@@ -361,16 +362,20 @@ class NoteApp:
         dialog.bind('<Escape>', lambda e: cancel())
     
     def handle_selected_text(self):
-        # 获取剪贴板内容
-        win32clipboard.OpenClipboard()
+        # 尝试使用 pyperclip 获取剪贴板内容
         try:
-            text = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT)
-            if isinstance(text, bytes):
-                text = text.decode('gbk')
-        except:
-            text = ""
-        finally:
-            win32clipboard.CloseClipboard()
+            text = pyperclip.paste()
+        except pyperclip.PyperclipException:
+            # 如果 pyperclip 失败，回退到 win32clipboard
+            try:
+                win32clipboard.OpenClipboard()
+                text = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT)
+                if isinstance(text, bytes):
+                    text = text.decode('gbk')
+            except:
+                text = ""
+            finally:
+                win32clipboard.CloseClipboard()
         
         if text:
             # 显示保存对话框
