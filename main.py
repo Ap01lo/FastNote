@@ -17,51 +17,89 @@ class NoteApp:
         self.db = DatabaseManager()
         
         # 创建主框架
-        self.main_frame = ttk.Frame(self.root, padding="10")
-        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        
+        self.main_frame = ttk.Frame(self.root, padding="15")
+        self.main_frame.grid(row=0, column=0, sticky="nsew")
+        
+        # 配置主框架的行列权重
+        for i in range(4):
+            self.main_frame.grid_rowconfigure(i, weight=1 if i == 3 else 0)
+        self.main_frame.grid_columnconfigure(0, weight=1)
         
         # 标题输入
-        ttk.Label(self.main_frame, text="标题:").grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(self.main_frame, text="标题:", font=('Arial', 10)).grid(row=0, column=0, sticky="w", pady=(0,5))
         self.title_var = tk.StringVar()
-        self.title_entry = ttk.Entry(self.main_frame, textvariable=self.title_var, width=40)
-        self.title_entry.grid(row=0, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.title_entry = ttk.Entry(self.main_frame, textvariable=self.title_var, font=('Arial', 10))
+        self.title_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=(0,5))
         
         # 内容输入
-        ttk.Label(self.main_frame, text="内容:").grid(row=1, column=0, sticky=tk.W)
-        self.content_text = tk.Text(self.main_frame, width=50, height=10)
-        self.content_text.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(self.main_frame, text="内容:", font=('Arial', 10)).grid(row=1, column=0, sticky="nw", pady=(0,5))
+        self.content_text = tk.Text(self.main_frame, font=('Arial', 10), wrap="word")
+        self.content_text.grid(row=1, column=1, columnspan=2, sticky="nsew", pady=(0,5))
         
         # 按钮区域
         button_frame = ttk.Frame(self.main_frame)
-        button_frame.grid(row=2, column=0, columnspan=3, pady=10)
-        
-        ttk.Button(button_frame, text="保存", command=self.save_note).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="清空", command=self.clear_inputs).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="最小化到托盘", command=self.minimize_to_tray).pack(side=tk.LEFT, padx=5)
+        button_frame.grid(row=2, column=0, columnspan=3, pady=(10, 15), sticky="ew")
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        button_frame.grid_columnconfigure(2, weight=1)
+        button_frame.grid_columnconfigure(3, weight=1)
+
+        # 初始化样式
+        self.style = ttk.Style()
+        self.style.configure("TButton", font=('Arial', 10), padding=8)
+
+        self.save_button = ttk.Button(button_frame, text="保存笔记", command=self.save_note)
+        self.save_button.grid(row=0, column=0, sticky="ew", padx=5)
+
+        self.clear_button = ttk.Button(button_frame, text="清空输入", command=self.clear_inputs)
+        self.clear_button.grid(row=0, column=1, sticky="ew", padx=5)
+
+        self.refresh_button = ttk.Button(button_frame, text="刷新笔记", command=self.refresh_notes)
+        self.refresh_button.grid(row=0, column=2, sticky="ew", padx=5)
+
+        self.delete_button = ttk.Button(button_frame, text="删除笔记", command=self.delete_note)
+        self.delete_button.grid(row=0, column=3, sticky="ew", padx=5)
         
         # 笔记列表
-        self.tree = ttk.Treeview(self.main_frame, columns=("ID", "标题", "创建时间", "更新时间"), show="headings")
-        self.tree.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.tree = ttk.Treeview(self.main_frame, columns=("ID", "标题", "创建时间", "更新时间"), 
+                               show="headings", style="Custom.Treeview")
+        self.tree.grid(row=3, column=0, columnspan=3, sticky="nsew", pady=(10,0))
+        
+        # 设置Treeview样式
+        self.style.configure("Custom.Treeview", font=('Arial', 9), rowheight=25)
+        self.style.configure("Custom.Treeview.Heading", font=('Arial', 10, 'bold'))
         
         # 设置列标题
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("标题", text="标题")
-        self.tree.heading("创建时间", text="创建时间")
-        self.tree.heading("更新时间", text="更新时间")
-        
+        self.tree.heading("ID", text="ID", anchor="center")
+        self.tree.heading("标题", text="标题", anchor="w")
+        self.tree.heading("创建时间", text="创建时间", anchor="center")
+        self.tree.heading("更新时间", text="更新时间", anchor="center")
+
         # 设置列宽
-        self.tree.column("ID", width=50)
-        self.tree.column("标题", width=200)
-        self.tree.column("创建时间", width=150)
-        self.tree.column("更新时间", width=150)
+        self.tree.column("ID", width=50, stretch=tk.NO, anchor="center")
+        self.tree.column("标题", width=250, stretch=tk.YES, anchor="w")
+        self.tree.column("创建时间", width=180, stretch=tk.NO, anchor="center")
+        self.tree.column("更新时间", width=180, stretch=tk.NO, anchor="center")
         
         # 绑定选择事件
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
         
         # 添加滚动条
         scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        scrollbar.grid(row=3, column=3, sticky=(tk.N, tk.S))
+        scrollbar.grid(row=3, column=3, sticky="ns")
         self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        # 设置窗口最小尺寸
+        self.root.minsize(600, 500)
+        
+        # 设置窗口图标
+        try:
+            self.root.iconbitmap("icon.png")
+        except:
+            pass
         
         # 初始化显示
         self.refresh_notes()
@@ -149,9 +187,9 @@ class NoteApp:
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 创建标题输入框
-        ttk.Label(dialog, text="请输入标题：").pack(pady=10)
+        ttk.Label(dialog, text="请输入标题：", font=('Arial', 10)).pack(pady=10)
         title_var = tk.StringVar()
-        title_entry = ttk.Entry(dialog, textvariable=title_var, width=40)
+        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Arial', 10), width=40)
         title_entry.pack(pady=5)
         # 确保对话框显示后立即获得焦点
         dialog.lift()
@@ -186,11 +224,17 @@ class NoteApp:
         def cancel():
             dialog.destroy()
         
-        # 创建按钮
+        # 按钮
         button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=20)
-        ttk.Button(button_frame, text="保存", command=save).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="取消", command=cancel).pack(side=tk.LEFT, padx=10)
+        button_frame.pack(pady=15)
+        
+        self.style.configure("TButton", font=('Arial', 10), padding=8)
+
+        save_button = ttk.Button(button_frame, text="保存", command=save)
+        save_button.pack(side=tk.LEFT, padx=10)
+
+        cancel_button = ttk.Button(button_frame, text="取消", command=cancel)
+        cancel_button.pack(side=tk.LEFT, padx=10)
         
         # 绑定回车键为保存
         dialog.bind('<Return>', lambda e: save())
@@ -322,9 +366,9 @@ class NoteApp:
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 创建标题输入框
-        ttk.Label(dialog, text="请输入标题：").pack(pady=10)
+        ttk.Label(dialog, text="请输入标题：", font=('Arial', 10)).pack(pady=10)
         title_var = tk.StringVar()
-        title_entry = ttk.Entry(dialog, textvariable=title_var, width=40)
+        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Arial', 10), width=40)
         title_entry.pack(pady=5)
         # 确保对话框显示后立即获得焦点
         dialog.lift()
@@ -350,11 +394,17 @@ class NoteApp:
         def cancel():
             dialog.destroy()
         
-        # 创建按钮
+        # 按钮
         button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=20)
-        ttk.Button(button_frame, text="保存", command=save).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="取消", command=cancel).pack(side=tk.LEFT, padx=10)
+        button_frame.pack(pady=15)
+        
+        self.style.configure("TButton", font=('Arial', 10), padding=8)
+
+        save_button = ttk.Button(button_frame, text="保存", command=save)
+        save_button.pack(side=tk.LEFT, padx=10)
+
+        cancel_button = ttk.Button(button_frame, text="取消", command=cancel)
+        cancel_button.pack(side=tk.LEFT, padx=10)
         
         # 绑定回车键为保存
         dialog.bind('<Return>', lambda e: save())
@@ -405,9 +455,9 @@ class NoteApp:
         dialog.geometry(f"{window_width}x{window_height}+{x}+{y}")
         
         # 创建标题输入框
-        ttk.Label(dialog, text="请输入标题：").pack(pady=10)
+        ttk.Label(dialog, text="请输入标题：", font=('Arial', 10)).pack(pady=10)
         title_var = tk.StringVar()
-        title_entry = ttk.Entry(dialog, textvariable=title_var, width=40)
+        title_entry = ttk.Entry(dialog, textvariable=title_var, font=('Arial', 10), width=40)
         title_entry.pack(pady=5)
         # 确保对话框显示后立即获得焦点
         dialog.lift()
@@ -422,8 +472,8 @@ class NoteApp:
         dialog.after(100, ensure_focus)
         
         # 创建内容输入框
-        ttk.Label(dialog, text="请输入内容：").pack(pady=10)
-        content_text = tk.Text(dialog, width=40, height=8)
+        ttk.Label(dialog, text="请输入内容：", font=('Arial', 10)).pack(pady=10)
+        content_text = tk.Text(dialog, font=('Arial', 10), wrap="word", width=40, height=8)
         content_text.pack(pady=5)
         
         def save():
@@ -439,11 +489,17 @@ class NoteApp:
         def cancel():
             dialog.destroy()
         
-        # 创建按钮
+        # 按钮
         button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=20)
-        ttk.Button(button_frame, text="保存", command=save).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="取消", command=cancel).pack(side=tk.LEFT, padx=10)
+        button_frame.pack(pady=15)
+        
+        self.style.configure("TButton", font=('Arial', 10), padding=8)
+
+        save_button = ttk.Button(button_frame, text="保存", command=save)
+        save_button.pack(side=tk.LEFT, padx=10)
+
+        cancel_button = ttk.Button(button_frame, text="取消", command=dialog.destroy)
+        cancel_button.pack(side=tk.LEFT, padx=10)
         
         # 绑定回车键为保存（当焦点在标题输入框时）
         title_entry.bind('<Return>', lambda e: content_text.focus())
@@ -503,6 +559,19 @@ class NoteApp:
         for note in notes:
             self.tree.insert("", tk.END, values=note)
     
+    def delete_note(self):
+        selected_items = self.tree.selection()
+        if not selected_items:
+            messagebox.showwarning("提示", "请先选择要删除的笔记！")
+            return
+
+        if messagebox.askyesno("确认删除", "确定要删除选中的笔记吗？"):
+            for item in selected_items:
+                note_id = self.tree.item(item)['values'][0]
+                self.db.delete_note(note_id)
+            self.refresh_notes()
+            self.clear_inputs()
+
     def on_select(self, event):
         selected_items = self.tree.selection()
         if not selected_items:
