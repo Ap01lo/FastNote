@@ -16,20 +16,38 @@ class NoteApp:
         self.root.title('FastNote')
         self.db = DatabaseManager()
         
+        # 创建搜索框架
+        self.search_frame = ttk.Frame(self.root, padding="15 5")
+        self.search_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.search_frame.grid_columnconfigure(0, weight=1)
+        
+        # 创建搜索框和按钮
+        self.search_var = tk.StringVar()
+        self.search_entry = ttk.Entry(self.search_frame, textvariable=self.search_var, font=('Microsoft YaHei UI', 12))
+        self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        self.search_button = ttk.Button(self.search_frame, text="搜索", command=self.search_notes)
+        self.search_button.grid(row=0, column=1)
+        
+        # 绑定回车键到搜索功能
+        self.search_entry.bind('<Return>', lambda e: self.search_notes())
+        
+        # 添加快捷键提示标签
+        ttk.Label(self.search_frame, text="快捷键：Ctrl+Alt+F", foreground='gray').grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+        
         # 创建主框架
-        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         
         # 左侧笔记列表框架
         self.list_frame = ttk.Frame(self.root, padding="15")
-        self.list_frame.grid(row=0, column=0, sticky="nsew")
+        self.list_frame.grid(row=1, column=0, sticky="nsew")
         self.list_frame.grid_rowconfigure(1, weight=1)
         self.list_frame.grid_columnconfigure(0, weight=1)
         
         # 右侧预览框架
         self.preview_frame = ttk.Frame(self.root, padding="15")
-        self.preview_frame.grid(row=0, column=1, sticky="nsew")
+        self.preview_frame.grid(row=1, column=1, sticky="nsew")
         self.preview_frame.grid_rowconfigure(1, weight=1)
         self.preview_frame.grid_columnconfigure(0, weight=1)
         
@@ -164,7 +182,8 @@ class NoteApp:
         with keyboard.GlobalHotKeys({
             '<ctrl>+<alt>+1': lambda: self.handle_hotkey(self.handle_screenshot),  # 截图保存
             '<ctrl>+<alt>+2': lambda: self.handle_hotkey(self.handle_selected_text),  # 选中文本保存
-            '<ctrl>+<alt>+3': lambda: self.handle_hotkey(self.handle_direct_input)  # 直接输入保存
+            '<ctrl>+<alt>+3': lambda: self.handle_hotkey(self.handle_direct_input),  # 直接输入保存
+            '<ctrl>+<alt>+f': lambda: self.handle_hotkey(self.focus_search)  # 聚焦搜索框
         }) as h:
             h.join()
     
@@ -529,19 +548,31 @@ class NoteApp:
             self.icon.stop()
         self.root.quit()
     
-    def refresh_notes(self):
+    def refresh_notes(self, search_text=None):
         # 清空现有项目
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        # 获取并显示笔记
-        notes = self.db.get_all_notes()
+        # 从数据库获取笔记
+        if search_text:
+            notes = self.db.search_notes_by_title(search_text)
+        else:
+            notes = self.db.get_all_notes()
+        
+        # 添加笔记到列表
         for note in notes:
-            # note 结构为 (id, title, content, created_at, updated_at, note_type)
-            # Treeview 列为 ("ID", "标题", "类型", "创建时间", "更新时间")
-            # 提取所需字段并按顺序插入
             display_values = (note[0], note[1], note[4], note[2], note[3])
             self.tree.insert("", tk.END, values=display_values)
+    
+    def search_notes(self):
+        search_text = self.search_var.get().strip()
+        self.refresh_notes(search_text)
+    
+    def focus_search(self):
+        # 聚焦到搜索框
+        self.search_entry.focus_set()
+        # 全选搜索框中的文本
+        self.search_entry.select_range(0, tk.END)
     
     def delete_note(self):
         selected_items = self.tree.selection()

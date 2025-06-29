@@ -82,3 +82,14 @@ class DatabaseManager:
             cursor = conn.cursor()
             cursor.execute('DELETE FROM notes WHERE id = ?', (note_id,))
             conn.commit()
+    
+    def search_notes_by_title(self, search_text):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, title, created_at, updated_at, note_type
+                FROM notes
+                WHERE title LIKE ?
+                ORDER BY updated_at DESC
+            ''', (f'%{search_text}%',))
+            return cursor.fetchall()
