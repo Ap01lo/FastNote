@@ -24,20 +24,24 @@ class NoteApp:
         self.main_frame.grid(row=0, column=0, sticky="nsew")
         
         # 配置主框架的行列权重
-        for i in range(4):
-            self.main_frame.grid_rowconfigure(i, weight=1 if i == 3 else 0)
+        self.main_frame.grid_rowconfigure(0, weight=0)
+        self.main_frame.grid_rowconfigure(1, weight=1)
+        self.main_frame.grid_rowconfigure(2, weight=0)
+        self.main_frame.grid_rowconfigure(3, weight=8)
         self.main_frame.grid_columnconfigure(0, weight=1)
+        self.main_frame.grid_columnconfigure(1, weight=1)
+        self.main_frame.grid_columnconfigure(2, weight=1)
         
         # 标题输入
-        ttk.Label(self.main_frame, text="标题:", font=('Arial', 10)).grid(row=0, column=0, sticky="w", pady=(0,5))
+        ttk.Label(self.main_frame, text="标题:", font=('Microsoft YaHei UI', 12)).grid(row=0, column=0, sticky="w", pady=(0,5))
         self.title_var = tk.StringVar()
-        self.title_entry = ttk.Entry(self.main_frame, textvariable=self.title_var, font=('Arial', 10))
-        self.title_entry.grid(row=0, column=1, columnspan=2, sticky="ew", pady=(0,5))
+        self.title_entry = ttk.Entry(self.main_frame, textvariable=self.title_var, font=('Microsoft YaHei UI', 14))
+        self.title_entry.grid(row=0, column=1, columnspan=3, sticky="ew", pady=(0,5))
         
         # 内容输入
-        ttk.Label(self.main_frame, text="内容:", font=('Arial', 10)).grid(row=1, column=0, sticky="nw", pady=(0,5))
-        self.content_text = tk.Text(self.main_frame, font=('Arial', 10), wrap="word")
-        self.content_text.grid(row=1, column=1, columnspan=2, sticky="nsew", pady=(0,5))
+        ttk.Label(self.main_frame, text="内容:", font=('Microsoft YaHei UI', 12)).grid(row=1, column=0, sticky="nw", pady=(0,5))
+        self.content_text = tk.Text(self.main_frame, font=('Microsoft YaHei UI', 14), wrap="word", height=5)
+        self.content_text.grid(row=1, column=1, columnspan=3, sticky="nsew", pady=(0,5))
         
         # 按钮区域
         button_frame = ttk.Frame(self.main_frame)
@@ -49,7 +53,7 @@ class NoteApp:
 
         # 初始化样式
         self.style = ttk.Style()
-        self.style.configure("TButton", font=('Arial', 10), padding=8)
+        self.style.configure("TButton", font=('Microsoft YaHei UI', 12), padding=10)
 
         self.save_button = ttk.Button(button_frame, text="保存笔记", command=self.save_note)
         self.save_button.grid(row=0, column=0, sticky="ew", padx=5)
@@ -64,25 +68,27 @@ class NoteApp:
         self.delete_button.grid(row=0, column=3, sticky="ew", padx=5)
         
         # 笔记列表
-        self.tree = ttk.Treeview(self.main_frame, columns=("ID", "标题", "创建时间", "更新时间"), 
+        self.tree = ttk.Treeview(self.main_frame, columns=("ID", "标题", "类型", "创建时间", "更新时间"), 
                                show="headings", style="Custom.Treeview")
         self.tree.grid(row=3, column=0, columnspan=3, sticky="nsew", pady=(10,0))
         
         # 设置Treeview样式
-        self.style.configure("Custom.Treeview", font=('Arial', 9), rowheight=25)
-        self.style.configure("Custom.Treeview.Heading", font=('Arial', 10, 'bold'))
+        self.style.configure("Custom.Treeview", font=('Microsoft YaHei UI', 12), rowheight=30)
+        self.style.configure("Custom.Treeview.Heading", font=('Microsoft YaHei UI', 12, 'bold'))
         
         # 设置列标题
         self.tree.heading("ID", text="ID", anchor="center")
         self.tree.heading("标题", text="标题", anchor="w")
+        self.tree.heading("类型", text="类型", anchor="center")
         self.tree.heading("创建时间", text="创建时间", anchor="center")
         self.tree.heading("更新时间", text="更新时间", anchor="center")
-
+        
         # 设置列宽
         self.tree.column("ID", width=50, stretch=tk.NO, anchor="center")
-        self.tree.column("标题", width=250, stretch=tk.YES, anchor="w")
-        self.tree.column("创建时间", width=180, stretch=tk.NO, anchor="center")
-        self.tree.column("更新时间", width=180, stretch=tk.NO, anchor="center")
+        self.tree.column("标题", width=200, stretch=tk.YES, anchor="w")
+        self.tree.column("类型", width=80, stretch=tk.NO, anchor="center")
+        self.tree.column("创建时间", width=150, stretch=tk.NO, anchor="center")
+        self.tree.column("更新时间", width=150, stretch=tk.NO, anchor="center")
         
         # 绑定选择事件
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
@@ -385,7 +391,7 @@ class NoteApp:
         def save():
             title = title_var.get().strip()
             if title:
-                self.db.add_note(title, text)
+                self.db.add_note(title, text, note_type='text')
                 self.refresh_notes()
                 dialog.destroy()
             else:
@@ -480,7 +486,7 @@ class NoteApp:
             title = title_var.get().strip()
             content = content_text.get("1.0", tk.END).strip()
             if title and content:
-                self.db.add_note(title, content)
+                self.db.add_note(title, content, note_type='text')
                 self.refresh_notes()
                 dialog.destroy()
             else:
@@ -541,7 +547,7 @@ class NoteApp:
             messagebox.showwarning("提示", "请输入标题！")
             return
             
-        self.db.add_note(title, content)
+        self.db.add_note(title, content, note_type='text')
         self.refresh_notes()
         self.clear_inputs()
     
@@ -557,7 +563,11 @@ class NoteApp:
         # 获取并显示笔记
         notes = self.db.get_all_notes()
         for note in notes:
-            self.tree.insert("", tk.END, values=note)
+            # note 结构为 (id, title, content, created_at, updated_at, note_type)
+            # Treeview 列为 ("ID", "标题", "类型", "创建时间", "更新时间")
+            # 提取所需字段并按顺序插入
+            display_values = (note[0], note[1], note[4], note[2], note[3])
+            self.tree.insert("", tk.END, values=display_values)
     
     def delete_note(self):
         selected_items = self.tree.selection()
@@ -613,4 +623,5 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
+    main()
     main()

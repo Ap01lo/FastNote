@@ -39,7 +39,7 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT id, title, created_at, updated_at
+                SELECT id, title, created_at, updated_at, note_type
                 FROM notes
                 ORDER BY updated_at DESC
             ''')
