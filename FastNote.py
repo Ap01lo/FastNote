@@ -126,6 +126,9 @@ class NoteApp:
         # 设置关闭窗口的行为
         self.root.protocol('WM_DELETE_WINDOW', self.minimize_to_tray)
         
+        # 绑定ESC键最小化到托盘
+        self.root.bind('<Escape>', lambda e: self.minimize_to_tray())
+        
         # 创建系统托盘图标
         self.create_tray_icon()
         
