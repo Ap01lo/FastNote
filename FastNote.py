@@ -32,7 +32,7 @@ class NoteApp:
         self.search_entry.bind('<Return>', lambda e: self.search_notes())
         
         # 添加快捷键提示标签
-        ttk.Label(self.search_frame, text="快捷键：Ctrl+Alt+F", foreground='gray').grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+        ttk.Label(self.search_frame, text="搜索快捷键：Ctrl+Alt+F；截图保存：Ctrl+Alt+1；剪贴板保存：Ctrl+Alt+2；输入文本保存：Ctrl+Alt+3", foreground='gray').grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
         
         # 创建主框架
         self.root.grid_rowconfigure(1, weight=1)
