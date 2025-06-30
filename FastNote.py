@@ -102,6 +102,8 @@ class NoteApp:
         
         # 绑定选择事件
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
+        self.tree.bind('j', self.select_next_note)
+        self.tree.bind('k', self.select_prev_note)
         
         # 添加滚动条
         scrollbar = ttk.Scrollbar(self.list_frame, orient=tk.VERTICAL, command=self.tree.yview)
@@ -570,7 +572,50 @@ class NoteApp:
     def search_notes(self):
         search_text = self.search_var.get().strip()
         self.refresh_notes(search_text)
+        # 搜索完成后，如果存在结果，则选中第一个
+        if self.tree.get_children():
+            first_item = self.tree.get_children()[0]
+            self.tree.selection_set(first_item)
+            self.tree.focus(first_item)
+            self.tree.see(first_item) # 确保第一个项目可见
+            self.tree.focus_set() # 将焦点设置到Treeview上
     
+    def select_next_note(self, event=None):
+        current_selection = self.tree.selection()
+        if not current_selection:
+            # 如果没有选中任何项，选中第一个
+            if self.tree.get_children():
+                first_item = self.tree.get_children()[0]
+                self.tree.selection_set(first_item)
+                self.tree.focus(first_item)
+                self.tree.see(first_item)
+            return
+
+        current_item = current_selection[0]
+        next_item = self.tree.next(current_item)
+        if next_item:
+            self.tree.selection_set(next_item)
+            self.tree.focus(next_item)
+            self.tree.see(next_item)
+
+    def select_prev_note(self, event=None):
+        current_selection = self.tree.selection()
+        if not current_selection:
+            # 如果没有选中任何项，选中最后一个
+            if self.tree.get_children():
+                last_item = self.tree.get_children()[-1]
+                self.tree.selection_set(last_item)
+                self.tree.focus(last_item)
+                self.tree.see(last_item)
+            return
+
+        current_item = current_selection[0]
+        prev_item = self.tree.prev(current_item)
+        if prev_item:
+            self.tree.selection_set(prev_item)
+            self.tree.focus(prev_item)
+            self.tree.see(prev_item)
+
     def focus_search(self):
         # 聚焦到搜索框
         self.search_entry.focus_set()
