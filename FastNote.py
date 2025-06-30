@@ -188,7 +188,8 @@ class NoteApp:
             '<ctrl>+<alt>+1': lambda: self.handle_hotkey(self.handle_screenshot),  # 截图保存
             '<ctrl>+<alt>+2': lambda: self.handle_hotkey(self.handle_selected_text),  # 选中文本保存
             '<ctrl>+<alt>+3': lambda: self.handle_hotkey(self.handle_direct_input),  # 直接输入保存
-            '<ctrl>+<alt>+f': lambda: self.handle_hotkey(self.focus_search)  # 聚焦搜索框
+            '<ctrl>+<alt>+f': lambda: self.handle_hotkey(self.focus_search),  # 聚焦搜索框
+            '<ctrl>+d': lambda: self.handle_hotkey(self.delete_note)  # 删除笔记
         }) as h:
             h.join()
     
