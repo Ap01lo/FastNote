@@ -112,7 +112,7 @@ class NoteApp:
         self.search_button.pack(side=tk.RIGHT, padx=(0, 5))
         
         # 创建快捷键提示标签（放在搜索框下方）
-        shortcut_text = "快捷键： Ctrl+Alt+1 截图 | Ctrl+Alt+2 剪切文本 | Ctrl+Alt+3 输入 | Ctrl+Alt+F 搜索 | Ctrl+D 删除 | Ctrl+S 保存 | Tab 切换工作区域 | ESC 取消选择"
+        shortcut_text = "快捷键： Ctrl+Alt+1 截图 | Ctrl+Alt+2 剪切文本 | Ctrl+Alt+3 输入 | Ctrl+Alt+F 搜索 | Ctrl+D 删除 | Ctrl+S 保存 | Tab 切换工作区域 | ESC 取消选择/最小化至托盘 | jk上下选择"
         self.shortcut_label = ttk.Label(search_area, text=shortcut_text, 
                                       font=('Microsoft YaHei UI', 9), 
                                       foreground='#666666')
