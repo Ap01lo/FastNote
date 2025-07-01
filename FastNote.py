@@ -7,8 +7,15 @@ from PIL import Image, ImageGrab, ImageTk
 import io
 from pynput import keyboard
 import win32clipboard
+import win32api
+import win32gui
+import win32ui
+import win32con
 import pyperclip
 import threading
+import os
+import numpy as np
+import sys
 
 class NoteApp:
     def __init__(self, root):
@@ -396,6 +403,73 @@ class NoteApp:
         # 绑定ESC键为取消
         dialog.bind('<Escape>', lambda e: cancel())
     
+    def capture_screen_area(self, x1, y1, x2, y2):
+        """使用pywin32捕获屏幕区域，支持多显示器"""
+        try:
+            # 获取桌面窗口句柄
+            hwnd = win32gui.GetDesktopWindow()
+            # 获取设备上下文
+            hwndDC = win32gui.GetWindowDC(hwnd)
+            mfcDC = win32ui.CreateDCFromHandle(hwndDC)
+            saveDC = mfcDC.CreateCompatibleDC()
+            
+            # 创建位图对象
+            saveBitMap = win32ui.CreateBitmap()
+            width = x2 - x1
+            height = y2 - y1
+            saveBitMap.CreateCompatibleBitmap(mfcDC, width, height)
+            saveDC.SelectObject(saveBitMap)
+            
+            # 复制屏幕区域到位图
+            saveDC.BitBlt((0, 0), (width, height), mfcDC, (x1, y1), win32con.SRCCOPY)
+            
+            # 将位图转换为PIL Image对象
+            bmpinfo = saveBitMap.GetInfo()
+            bmpstr = saveBitMap.GetBitmapBits(True)
+            img = Image.frombuffer(
+                'RGB',
+                (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
+                bmpstr, 'raw', 'BGRX', 0, 1)
+            
+            # 清理资源
+            saveDC.DeleteDC()
+            mfcDC.DeleteDC()
+            win32gui.ReleaseDC(hwnd, hwndDC)
+            win32gui.DeleteObject(saveBitMap.GetHandle())
+            
+            return img
+        except Exception as e:
+            print(f"截图失败: {e}")
+            # 如果pywin32方法失败，回退到PIL的ImageGrab
+            return ImageGrab.grab(bbox=(x1, y1, x2, y2))
+    
+    def get_virtual_screen_size(self):
+        """获取虚拟屏幕尺寸（包括所有显示器）"""
+        try:
+            # 使用EnumDisplayMonitors获取所有显示器信息
+            monitors = win32api.EnumDisplayMonitors(None, None)
+            
+            # 初始化虚拟屏幕的边界
+            left = top = sys.maxsize
+            right = bottom = -sys.maxsize
+            
+            # 遍历所有显示器，找出整个虚拟屏幕的边界
+            for monitor in monitors:
+                monitor_info = win32api.GetMonitorInfo(monitor[0])
+                monitor_rect = monitor_info['Monitor']
+                
+                # 更新虚拟屏幕边界
+                left = min(left, monitor_rect[0])
+                top = min(top, monitor_rect[1])
+                right = max(right, monitor_rect[2])
+                bottom = max(bottom, monitor_rect[3])
+            
+            return (right - left, bottom - top, left, top)
+        except Exception as e:
+            print(f"获取虚拟屏幕尺寸失败: {e}")
+            # 如果失败，回退到tkinter的方法
+            return (self.root.winfo_screenwidth(), self.root.winfo_screenheight(), 0, 0)
+    
     def handle_screenshot(self):
         # 隐藏主窗口
         self.root.withdraw()
@@ -407,21 +481,22 @@ class NoteApp:
         hint_label = ttk.Label(hint_window, text="请按住鼠标左键选择截图区域，松开完成截图")
         hint_label.pack(padx=10, pady=5)
         
-        # 获取屏幕尺寸
-        screen_width = hint_window.winfo_screenwidth()
-        screen_height = hint_window.winfo_screenheight()
+        # 获取虚拟屏幕尺寸（包括所有显示器）
+        virtual_width, virtual_height, virtual_left, virtual_top = self.get_virtual_screen_size()
         
-        # 将提示窗口放在屏幕中央
-        hint_window.geometry(f"+{screen_width//2-150}+{screen_height//2-25}")
+        # 将提示窗口放在主屏幕中央
+        primary_width = self.root.winfo_screenwidth()
+        primary_height = self.root.winfo_screenheight()
+        hint_window.geometry(f"+{primary_width//2-150}+{primary_height//2-25}")
         
-        # 创建全屏遮罩窗口
+        # 创建全屏遮罩窗口，覆盖整个虚拟屏幕
         overlay = tk.Toplevel()
         overlay.attributes('-alpha', 0.3, '-topmost', True)
-        overlay.geometry(f"{screen_width}x{screen_height}+0+0")
+        overlay.geometry(f"{virtual_width}x{virtual_height}+{virtual_left}+{virtual_top}")
         overlay.overrideredirect(True)
         
         # 创建全屏画布
-        canvas = tk.Canvas(overlay, width=screen_width, height=screen_height, 
+        canvas = tk.Canvas(overlay, width=virtual_width, height=virtual_height, 
                           highlightthickness=0, bg='gray')
         canvas.pack()
         
@@ -429,13 +504,11 @@ class NoteApp:
         end_x = end_y = 0
         is_drawing = False
         selection_rect = None
-        selection_mask = None
         
         def draw_selection(x1, y1, x2, y2):
-            nonlocal selection_rect, selection_mask
+            nonlocal selection_rect
             if selection_rect:
                 canvas.delete(selection_rect)
-
             
             # 创建选择框
             selection_rect = canvas.create_rectangle(
@@ -444,20 +517,24 @@ class NoteApp:
         
         def on_mouse_down(event):
             nonlocal start_x, start_y, is_drawing
-            start_x, start_y = event.x, event.y
+            # 调整坐标，考虑虚拟屏幕的偏移
+            start_x, start_y = event.x + virtual_left, event.y + virtual_top
             is_drawing = True
         
         def on_mouse_move(event):
             nonlocal end_x, end_y
             if is_drawing:
-                end_x, end_y = event.x, event.y
-                draw_selection(start_x, start_y, end_x, end_y)
+                # 调整坐标，考虑虚拟屏幕的偏移
+                end_x, end_y = event.x + virtual_left, event.y + virtual_top
+                draw_selection(start_x - virtual_left, start_y - virtual_top, 
+                              end_x - virtual_left, end_y - virtual_top)
         
         def on_mouse_up(event):
             nonlocal is_drawing, start_x, start_y, end_x, end_y
             if is_drawing:
                 is_drawing = False
-                end_x, end_y = event.x, event.y
+                # 调整坐标，考虑虚拟屏幕的偏移
+                end_x, end_y = event.x + virtual_left, event.y + virtual_top
                 
                 # 确保坐标正确（处理反向拖动的情况）
                 if end_x < start_x:
@@ -469,8 +546,8 @@ class NoteApp:
                 hint_window.destroy()
                 overlay.destroy()
                 
-                # 获取选定区域的截图
-                screenshot = ImageGrab.grab(bbox=(start_x, start_y, end_x, end_y))
+                # 使用pywin32捕获屏幕区域，支持多显示器
+                screenshot = self.capture_screen_area(start_x, start_y, end_x, end_y)
                 
                 # 显示保存对话框
                 self.create_save_dialog(screenshot)
