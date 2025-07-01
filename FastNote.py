@@ -279,10 +279,14 @@ class NoteApp:
         # 创建图标
         self.icon = pystray.Icon('fastnote', image, 'FastNote', menu)
     
-    def handle_hotkey(self, callback):
-        # 确保窗口状态正确
-        # 只有当窗口被隐藏时才停止托盘图标并显示主窗口
-        if not self.root.winfo_viewable():
+    def handle_hotkey(self, callback, require_focus=False):
+        # 如果需要焦点但窗口没有显示或没有焦点，则不执行操作
+        if require_focus:
+            # 检查窗口是否可见且有焦点
+            if not self.root.winfo_viewable() or not self.root.focus_displayof():
+                return
+        # 如果窗口被隐藏，则显示窗口
+        elif not self.root.winfo_viewable():
             self.root.deiconify()
             # 将窗口移到屏幕中央
             self.center_window()
@@ -309,7 +313,7 @@ class NoteApp:
             '<ctrl>+<alt>+2': lambda: self.handle_hotkey(self.handle_selected_text),  # 选中文本保存
             '<ctrl>+<alt>+3': lambda: self.handle_hotkey(self.handle_direct_input),  # 直接输入保存
             '<ctrl>+<alt>+f': lambda: self.handle_hotkey(self.focus_search),  # 聚焦搜索框
-            '<ctrl>+d': lambda: self.handle_hotkey(self.delete_note)  # 删除笔记
+            '<ctrl>+d': lambda: self.handle_hotkey(self.delete_note, require_focus=True)  # 删除笔记（需要窗口有焦点）
         }) as h:
             h.join()
     
@@ -820,17 +824,9 @@ class NoteApp:
         return 'break'  # 阻止事件继续传播
     
     def delete_note(self):
-        # 如果窗口处于最小化状态，先显示窗口
-        if not self.root.winfo_viewable():
-            self.show_window()
-            # 给UI一点时间来更新
-            self.root.update()
-            # 如果有搜索结果，选中第一个
-            if self.tree.get_children():
-                first_item = self.tree.get_children()[0]
-                self.tree.selection_set(first_item)
-                self.tree.focus(first_item)
-                self.tree.see(first_item)
+        # 如果窗口没有显示或没有焦点，则不执行删除操作
+        if not self.root.winfo_viewable() or not self.root.focus_displayof():
+            return
         
         selected_items = self.tree.selection()
         if not selected_items:
