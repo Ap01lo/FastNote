@@ -13,118 +13,229 @@ import threading
 class NoteApp:
     def __init__(self, root):
         self.root = root
-        self.root.title('FastNote')
+        self.root.title("FastNote - 快速笔记")
+        self.root.geometry("1000x700")
+        self.root.minsize(900, 650)
+        self.root.configure(bg='#F8F9FA')  # 更柔和的背景色
+        
+        # 设置图标
+        try:
+            self.root.iconbitmap("icon.ico")
+        except:
+            pass
+        
+        # 初始化数据库
         self.db = DatabaseManager()
         
-        # 创建搜索框架
-        self.search_frame = ttk.Frame(self.root, padding="15 5")
-        self.search_frame.grid(row=0, column=0, columnspan=2, sticky="ew")
-        self.search_frame.grid_columnconfigure(0, weight=1)
+        # 创建系统托盘图标变量
+        self.icon = None
         
-        # 创建搜索框和按钮
+        # 创建样式
+        self.style = ttk.Style()
+        self.style.theme_use('clam')  # 使用clam主题作为基础
+        
+        # 基础样式
+        self.style.configure('TFrame', background='#F8F9FA')
+        self.style.configure('TLabel', background='#F8F9FA', font=('Microsoft YaHei UI', 10))
+        self.style.configure('TButton', font=('Microsoft YaHei UI', 10), padding=6)
+        
+        # 创建焦点边框样式
+        self.style.configure('Focused.TFrame', background='#4CAF50')  # 绿色边框
+        self.style.configure('Normal.TFrame', background='#E0E0E0')   # 浅灰色边框
+        
+        # 创建内容框架样式
+        self.style.configure('Content.TFrame', background='white')
+        
+        # 创建卡片样式
+        self.style.configure('Card.TFrame', background='white', relief='flat')
+        
+        # 创建标题样式
+        self.style.configure('Title.TLabel', 
+                            font=('Microsoft YaHei UI', 12, 'bold'), 
+                            background='white', 
+                            foreground='#333333')
+        
+        # 创建自定义Treeview样式
+        self.style.configure('Custom.Treeview', 
+                            background='white', 
+                            fieldbackground='white', 
+                            borderwidth=0,
+                            font=('Microsoft YaHei UI', 11),
+                            rowheight=32)
+        self.style.map('Custom.Treeview', 
+                      background=[('selected', '#E8F5E9')],  # 浅绿色选中背景
+                      foreground=[('selected', '#333333')])  # 深灰色选中文字
+        
+        self.style.configure('Custom.Treeview.Heading', 
+                            font=('Microsoft YaHei UI', 11, 'bold'),
+                            relief='flat',
+                            borderwidth=0,
+                            background='#F5F5F5',
+                            foreground='#333333')
+        
+        # 创建主布局
+        main_container = ttk.Frame(self.root, style='TFrame')
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # 创建顶部区域
+        top_frame = ttk.Frame(main_container, style='TFrame')
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # 创建应用标题
+        app_title = ttk.Label(top_frame, text="FastNote", 
+                             font=('Microsoft YaHei UI', 18, 'bold'), 
+                             foreground='#4CAF50')
+        app_title.pack(side=tk.LEFT)
+        
+        # 创建搜索框
+        search_container = ttk.Frame(top_frame, style='Card.TFrame', padding=5)
+        search_container.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(20, 0))
+        
         self.search_var = tk.StringVar()
-        self.search_entry = ttk.Entry(self.search_frame, textvariable=self.search_var, font=('Microsoft YaHei UI', 12))
-        self.search_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
-        self.search_button = ttk.Button(self.search_frame, text="搜索", command=self.search_notes)
-        self.search_button.grid(row=0, column=1)
+        self.search_entry = ttk.Entry(search_container, textvariable=self.search_var, 
+                                     font=('Microsoft YaHei UI', 11))
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 10))
+        
+        self.search_button = ttk.Button(search_container, text="搜索", 
+                                       command=self.search_notes, width=6)
+        self.search_button.pack(side=tk.RIGHT, padx=(0, 5))
         
         # 绑定回车键到搜索功能
         self.search_entry.bind('<Return>', lambda e: self.search_notes())
         
-        # 添加快捷键提示标签
-        ttk.Label(self.search_frame, text="搜索快捷键：Ctrl+Alt+F；截图保存：Ctrl+Alt+1；剪贴板保存：Ctrl+Alt+2；输入文本保存：Ctrl+Alt+3\n预览区域：文本可编辑(Ctrl+S保存)；图片可复制(Ctrl+C复制)；Enter进入预览区域；ESC返回列表", foreground='gray').grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+        # 创建主内容区域
+        content_frame = ttk.Frame(main_container, style='TFrame')
+        content_frame.pack(fill=tk.BOTH, expand=True)
         
-        # 创建主框架
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
-        self.root.grid_columnconfigure(1, weight=1)
+        # 创建左侧笔记列表区域（占比35%）
+        self.list_frame = ttk.Frame(content_frame, style='Normal.TFrame')
+        self.list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False, padx=(0, 10), pady=0, ipadx=0, ipady=0)
+        self.list_frame.configure(width=350)  # 固定宽度
         
-        # 左侧笔记列表框架
-        self.list_frame = ttk.Frame(self.root, padding="15")
-        self.list_frame.grid(row=1, column=0, sticky="nsew")
-        self.list_frame.grid_rowconfigure(1, weight=1)
-        self.list_frame.grid_columnconfigure(0, weight=1)
+        # 创建内容容器
+        self.list_content = ttk.Frame(self.list_frame, style='Card.TFrame')
+        self.list_content.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
         
-        # 右侧预览框架
-        self.preview_frame = ttk.Frame(self.root, padding="15")
-        self.preview_frame.grid(row=1, column=1, sticky="nsew")
-        self.preview_frame.grid_rowconfigure(1, weight=1)
-        self.preview_frame.grid_columnconfigure(0, weight=1)
+        # 创建笔记列表标题区域
+        list_header = ttk.Frame(self.list_content, style='Card.TFrame')
+        list_header.pack(fill=tk.X, padx=15, pady=(15, 10))
         
-        # 初始化样式
-        self.style = ttk.Style()
-
+        list_title = ttk.Label(list_header, text="笔记列表", style='Title.TLabel')
+        list_title.pack(side=tk.LEFT)
         
-        # 笔记列表
-        self.tree = ttk.Treeview(self.list_frame, columns=("ID", "标题", "类型", "创建时间", "更新时间"), 
-                               show="headings", style="Custom.Treeview")
-        self.tree.grid(row=1, column=0, sticky="nsew")
+        # 添加删除按钮
+        self.delete_button = ttk.Button(list_header, text="删除", 
+                                      command=self.delete_note, width=6)
+        self.delete_button.pack(side=tk.RIGHT)
         
-        # 预览区域
-        self.preview_title = ttk.Label(self.preview_frame, text="", font=('Microsoft YaHei UI', 14, 'bold'))
-        self.preview_title.grid(row=0, column=0, sticky="w", pady=(0, 10))
+        # 创建分隔线
+        separator1 = ttk.Separator(self.list_content, orient='horizontal')
+        separator1.pack(fill=tk.X, padx=15, pady=(0, 10))
         
-        # 创建预览内容的容器框架
-        preview_container = ttk.Frame(self.preview_frame)
-        preview_container.grid(row=1, column=0, sticky="nsew")
-        preview_container.grid_rowconfigure(0, weight=1)
-        preview_container.grid_columnconfigure(0, weight=1)
+        # 创建笔记列表容器
+        tree_container = ttk.Frame(self.list_content, style='Card.TFrame')
+        tree_container.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
         
-        # 预览内容和滚动条
-        self.preview_content = tk.Text(preview_container, font=('Microsoft YaHei UI', 12), wrap="word", state="disabled")
-        self.preview_content.grid(row=0, column=0, sticky="nsew")
-        
-        preview_scrollbar = ttk.Scrollbar(preview_container, orient="vertical", command=self.preview_content.yview)
-        preview_scrollbar.grid(row=0, column=1, sticky="ns")
-        self.preview_content.configure(yscrollcommand=preview_scrollbar.set)
-        
-        # 删除按钮
-        self.delete_button = ttk.Button(self.list_frame, text="删除笔记", command=self.delete_note)
-        self.delete_button.grid(row=0, column=0, sticky="e", pady=(0, 10))
-        
-        # 设置Treeview样式
-        self.style.configure("Custom.Treeview", font=('Microsoft YaHei UI', 12), rowheight=30)
-        self.style.configure("Custom.Treeview.Heading", font=('Microsoft YaHei UI', 12, 'bold'))
+        # 创建笔记列表
+        self.tree = ttk.Treeview(tree_container, 
+                               columns=("ID", "标题", "类型", "创建时间", "更新时间"), 
+                               show="headings", 
+                               style='Custom.Treeview')
         
         # 设置列标题
-        self.tree.heading("ID", text="ID", anchor="center")
-        self.tree.heading("标题", text="标题", anchor="w")
-        self.tree.heading("类型", text="类型", anchor="center")
-        self.tree.heading("创建时间", text="创建时间", anchor="center")
-        self.tree.heading("更新时间", text="更新时间", anchor="center")
+        self.tree.heading("ID", text="ID")
+        self.tree.heading("标题", text="标题")
+        self.tree.heading("类型", text="类型")
+        self.tree.heading("创建时间", text="创建时间")
+        self.tree.heading("更新时间", text="更新时间")
         
-        # 设置列宽
-        self.tree.column("ID", stretch=tk.YES, anchor="center")
-        self.tree.column("标题", stretch=tk.YES, anchor="w")
-        self.tree.column("类型", stretch=tk.YES, anchor="center")
-        self.tree.column("创建时间", stretch=tk.YES, anchor="center")
-        self.tree.column("更新时间", stretch=tk.YES, anchor="center")
+        # 设置列宽和隐藏某些列
+        self.tree.column("ID", width=0, stretch=tk.NO, minwidth=0)
+        self.tree.column("标题", width=240, minwidth=150)
+        self.tree.column("类型", width=60, minwidth=50)
+        self.tree.column("创建时间", width=0, stretch=tk.NO, minwidth=0)
+        self.tree.column("更新时间", width=0, stretch=tk.NO, minwidth=0)
         
-        # 绑定选择事件
+        # 添加滚动条
+        scrollbar = ttk.Scrollbar(tree_container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # 创建右侧预览区域（占比65%）
+        self.preview_frame = ttk.Frame(content_frame, style='Normal.TFrame')
+        self.preview_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0), pady=0)
+        
+        # 创建预览内容容器
+        self.preview_content_frame = ttk.Frame(self.preview_frame, style='Card.TFrame')
+        self.preview_content_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        
+        # 创建预览标题
+        self.preview_title = ttk.Label(self.preview_content_frame, text="", 
+                                     font=('Microsoft YaHei UI', 16, 'bold'), 
+                                     background='white',
+                                     foreground='#333333')
+        self.preview_title.pack(fill=tk.X, padx=20, pady=(20, 15))
+        
+        # 创建分隔线
+        separator2 = ttk.Separator(self.preview_content_frame, orient='horizontal')
+        separator2.pack(fill=tk.X, padx=20, pady=(0, 15))
+        
+        # 创建预览内容容器
+        preview_container = ttk.Frame(self.preview_content_frame, style='Card.TFrame')
+        preview_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
+        
+        # 创建预览内容文本框
+        self.preview_content = tk.Text(preview_container, 
+                                     wrap=tk.WORD, 
+                                     font=('Microsoft YaHei UI', 12), 
+                                     background='white', 
+                                     relief='flat', 
+                                     borderwidth=0, 
+                                     padx=5, 
+                                     pady=5,
+                                     state="disabled")
+        self.preview_content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # 添加预览内容滚动条
+        preview_scrollbar = ttk.Scrollbar(preview_container, orient="vertical", 
+                                        command=self.preview_content.yview)
+        preview_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.preview_content.configure(yscrollcommand=preview_scrollbar.set)
+        
+        # 创建底部状态栏
+        status_bar = ttk.Frame(main_container, style='TFrame')
+        status_bar.pack(fill=tk.X, pady=(15, 0))
+        
+        # 创建焦点提示标签
+        self.focus_label = ttk.Label(status_bar, text="当前焦点：笔记列表", 
+                                   font=('Microsoft YaHei UI', 9), 
+                                   foreground='#666666')
+        self.focus_label.pack(side=tk.LEFT)
+        
+        # 创建快捷键提示标签
+        shortcut_text = "快捷键：Alt+Z 显示/隐藏 | Alt+X 截图 | Alt+C 文本 | Alt+V 输入 | Alt+F 搜索 | Ctrl+D 删除"
+        self.shortcut_label = ttk.Label(status_bar, text=shortcut_text, 
+                                      font=('Microsoft YaHei UI', 9), 
+                                      foreground='#666666')
+        self.shortcut_label.pack(side=tk.RIGHT)
+        
+        # 绑定选择事件和焦点事件
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
         self.tree.bind('j', self.select_next_note)
         self.tree.bind('k', self.select_prev_note)
         self.tree.bind('<Return>', self.focus_preview)
+        self.tree.bind('<Tab>', self.focus_preview)
+        self.tree.bind('<FocusOut>', lambda e: self.check_focus_widget())
         
-        # 绑定预览区域的ESC键
+        # 绑定预览区域的ESC键、Tab键和焦点事件
         self.preview_content.bind('<Escape>', self.focus_list)
-        
-        # 添加滚动条
-        scrollbar = ttk.Scrollbar(self.list_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        scrollbar.grid(row=1, column=1, sticky="ns")
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.preview_content.bind('<Tab>', self.focus_list)
+        self.preview_content.bind('<FocusOut>', lambda e: self.check_focus_widget())
         
         # 绑定窗口大小改变事件
         self.preview_frame.bind("<Configure>", self._on_preview_resize)
-        
-        # 设置窗口最小尺寸
-        self.root.minsize(1000, 600)
-        
-        # 设置窗口图标
-        try:
-            self.root.iconbitmap("icon.png")
-        except:
-            pass
         
         # 初始化显示
         self.refresh_notes()
@@ -545,13 +656,22 @@ class NoteApp:
     
     def minimize_to_tray(self):
         self.root.withdraw()  # 隐藏窗口
+        self.focus_label.config(text="")  # 清空焦点提示
+        # 重置边框样式
+        self.list_frame.configure(style='Normal.TFrame')
+        self.preview_frame.configure(style='Normal.TFrame')
 
     
     def show_window(self):
-
         self.root.deiconify()  # 显示窗口
         self.root.lift()  # 将窗口提升到最前
         self.center_window()  # 居中显示窗口
+        # 恢复焦点到笔记列表并更新提示
+        self.tree.focus_set()
+        self.focus_label.config(text="当前焦点：笔记列表")
+        # 更新边框样式
+        self.list_frame.configure(style='Focused.TFrame')
+        self.preview_frame.configure(style='Normal.TFrame')
     
     def quit_window(self):
         if self.icon:
@@ -584,6 +704,7 @@ class NoteApp:
             self.tree.focus(first_item)
             self.tree.see(first_item) # 确保第一个项目可见
             self.tree.focus_set() # 将焦点设置到Treeview上
+            self.focus_label.config(text="当前焦点：笔记列表")
     
     def select_next_note(self, event=None):
         current_selection = self.tree.selection()
@@ -626,14 +747,51 @@ class NoteApp:
         self.search_entry.focus_set()
         # 全选搜索框中的文本
         self.search_entry.select_range(0, tk.END)
+        # 更新焦点提示
+        self.focus_label.config(text="当前焦点：搜索框")
+        # 重置边框样式
+        self.list_frame.configure(style='Normal.TFrame')
+        self.preview_frame.configure(style='Normal.TFrame')
     
     def focus_preview(self, event=None):
         # 聚焦到预览区域
         self.preview_content.focus_set()
+        self.focus_label.config(text="当前焦点：预览区域")
+        # 更新边框样式
+        self.preview_frame.configure(style='Focused.TFrame')
+        self.list_frame.configure(style='Normal.TFrame')
+        if event and event.keysym == 'Tab':
+            return 'break'  # 阻止默认的Tab键行为
     
     def focus_list(self, event=None):
         # 聚焦到笔记列表
         self.tree.focus_set()
+        self.focus_label.config(text="当前焦点：笔记列表")
+        # 更新边框样式
+        self.list_frame.configure(style='Focused.TFrame')
+        self.preview_frame.configure(style='Normal.TFrame')
+        if event and event.keysym == 'Tab':
+            return 'break'  # 阻止默认的Tab键行为
+    
+    def check_focus_widget(self):
+        # 检查当前焦点所在的控件
+        focused = self.root.focus_get()
+        if focused == self.search_entry:
+            self.focus_label.config(text="当前焦点：搜索框")
+            self.list_frame.configure(style='Normal.TFrame')
+            self.preview_frame.configure(style='Normal.TFrame')
+        elif focused == self.tree:
+            self.focus_label.config(text="当前焦点：笔记列表")
+            self.list_frame.configure(style='Focused.TFrame')
+            self.preview_frame.configure(style='Normal.TFrame')
+        elif focused == self.preview_content:
+            self.focus_label.config(text="当前焦点：预览区域")
+            self.list_frame.configure(style='Normal.TFrame')
+            self.preview_frame.configure(style='Focused.TFrame')
+        else:
+            self.focus_label.config(text="")  # 当焦点在其他控件时清空提示
+            self.list_frame.configure(style='Normal.TFrame')
+            self.preview_frame.configure(style='Normal.TFrame')
     
     def delete_note(self):
         selected_items = self.tree.selection()
