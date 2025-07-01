@@ -87,9 +87,13 @@ class NoteApp:
                              foreground='#4CAF50')
         app_title.pack(side=tk.LEFT)
         
+        # 创建搜索区域容器（包含搜索框和快捷键提示）
+        search_area = ttk.Frame(top_frame, style='TFrame')
+        search_area.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(20, 0))
+        
         # 创建搜索框
-        search_container = ttk.Frame(top_frame, style='Card.TFrame', padding=5)
-        search_container.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(20, 0))
+        search_container = ttk.Frame(search_area, style='Card.TFrame', padding=5)
+        search_container.pack(side=tk.TOP, fill=tk.X, expand=True)
         
         self.search_var = tk.StringVar()
         self.search_entry = ttk.Entry(search_container, textvariable=self.search_var, 
@@ -99,6 +103,13 @@ class NoteApp:
         self.search_button = ttk.Button(search_container, text="搜索", 
                                        command=self.search_notes, width=6)
         self.search_button.pack(side=tk.RIGHT, padx=(0, 5))
+        
+        # 创建快捷键提示标签（放在搜索框下方）
+        shortcut_text = "快捷键： Ctrl+Alt+1 截图 | Ctrl+Alt+2 剪切文本 | Ctrl+Alt+3 输入 | Ctrl+Alt+F 搜索 | Ctrl+D 删除 | Ctrl+S 保存 | Tab 切换工作区域 | ESC 取消选择"
+        self.shortcut_label = ttk.Label(search_area, text=shortcut_text, 
+                                      font=('Microsoft YaHei UI', 9), 
+                                      foreground='#666666')
+        self.shortcut_label.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
         
         # 绑定回车键到搜索功能
         self.search_entry.bind('<Return>', lambda e: self.search_notes())
@@ -214,12 +225,7 @@ class NoteApp:
                                    foreground='#666666')
         self.focus_label.pack(side=tk.LEFT)
         
-        # 创建快捷键提示标签
-        shortcut_text = "快捷键：Alt+Z 显示/隐藏 | Alt+X 截图 | Alt+C 文本 | Alt+V 输入 | Alt+F 搜索 | Ctrl+D 删除"
-        self.shortcut_label = ttk.Label(status_bar, text=shortcut_text, 
-                                      font=('Microsoft YaHei UI', 9), 
-                                      foreground='#666666')
-        self.shortcut_label.pack(side=tk.RIGHT)
+        # 底部状态栏不再需要快捷键提示标签，已移至搜索框下方
         
         # 绑定选择事件和焦点事件
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
@@ -230,8 +236,8 @@ class NoteApp:
         self.tree.bind('<FocusOut>', lambda e: self.check_focus_widget())
         
         # 绑定预览区域的ESC键、Tab键和焦点事件
-        self.preview_content.bind('<Escape>', self.focus_list)
         self.preview_content.bind('<Tab>', self.focus_list)
+        self.preview_content.bind('<Escape>', self.clear_selection)  # 添加ESC键取消选中功能
         self.preview_content.bind('<FocusOut>', lambda e: self.check_focus_widget())
         
         # 绑定窗口大小改变事件
@@ -243,8 +249,8 @@ class NoteApp:
         # 设置关闭窗口的行为
         self.root.protocol('WM_DELETE_WINDOW', self.minimize_to_tray)
         
-        # 绑定ESC键最小化到托盘
-        self.root.bind('<Escape>', lambda e: self.minimize_to_tray())
+        # 绑定ESC键处理
+        self.root.bind('<Escape>', self.handle_escape_key)
         
         # 创建系统托盘图标
         self.create_tray_icon()
@@ -275,9 +281,8 @@ class NoteApp:
     
     def handle_hotkey(self, callback):
         # 确保窗口状态正确
-        if self.icon is not None and self.icon._icon is not None:
-            # 如果在托盘中，先停止托盘图标并显示主窗口
-            self.icon.stop()
+        # 只有当窗口被隐藏时才停止托盘图标并显示主窗口
+        if not self.root.winfo_viewable():
             self.root.deiconify()
             # 将窗口移到屏幕中央
             self.center_window()
@@ -654,6 +659,15 @@ class NoteApp:
         # 显示输入对话框
         self.create_direct_input_dialog()
     
+    def handle_escape_key(self, event=None):
+        """处理ESC键：取消选中笔记并最小化到托盘"""
+        # 如果有选中的笔记，先取消选中
+        if self.tree.selection():
+            self.clear_selection(event)
+        # 然后最小化到托盘
+        self.minimize_to_tray()
+        return 'break'  # 阻止事件继续传播
+    
     def minimize_to_tray(self):
         self.root.withdraw()  # 隐藏窗口
         self.focus_label.config(text="")  # 清空焦点提示
@@ -793,7 +807,31 @@ class NoteApp:
             self.list_frame.configure(style='Normal.TFrame')
             self.preview_frame.configure(style='Normal.TFrame')
     
+    def clear_selection(self, event=None):
+        """取消选中当前笔记"""
+        # 清除当前选中项
+        for item in self.tree.selection():
+            self.tree.selection_remove(item)
+        # 清空预览区域
+        self.preview_title.config(text="")
+        self.preview_content.config(state="normal")
+        self.preview_content.delete(1.0, tk.END)
+        self.preview_content.config(state="disabled")
+        return 'break'  # 阻止事件继续传播
+    
     def delete_note(self):
+        # 如果窗口处于最小化状态，先显示窗口
+        if not self.root.winfo_viewable():
+            self.show_window()
+            # 给UI一点时间来更新
+            self.root.update()
+            # 如果有搜索结果，选中第一个
+            if self.tree.get_children():
+                first_item = self.tree.get_children()[0]
+                self.tree.selection_set(first_item)
+                self.tree.focus(first_item)
+                self.tree.see(first_item)
+        
         selected_items = self.tree.selection()
         if not selected_items:
             messagebox.showwarning("提示", "请先选择要删除的笔记！")
@@ -968,9 +1006,8 @@ class NoteApp:
 
 def main():
     root = tk.Tk()
-    app = NoteApp(root)
+    app = NoteApp(root)   
     root.mainloop()
 
 if __name__ == "__main__":
-    main()
     main()
