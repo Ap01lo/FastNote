@@ -32,7 +32,7 @@ class NoteApp:
         self.search_entry.bind('<Return>', lambda e: self.search_notes())
         
         # 添加快捷键提示标签
-        ttk.Label(self.search_frame, text="搜索快捷键：Ctrl+Alt+F；截图保存：Ctrl+Alt+1；剪贴板保存：Ctrl+Alt+2；输入文本保存：Ctrl+Alt+3", foreground='gray').grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
+        ttk.Label(self.search_frame, text="搜索快捷键：Ctrl+Alt+F；截图保存：Ctrl+Alt+1；剪贴板保存：Ctrl+Alt+2；输入文本保存：Ctrl+Alt+3\n预览区域：文本可编辑(Ctrl+S保存)；图片可复制(Ctrl+C复制)；Enter进入预览区域；ESC返回列表", foreground='gray').grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
         
         # 创建主框架
         self.root.grid_rowconfigure(1, weight=1)
@@ -104,6 +104,10 @@ class NoteApp:
         self.tree.bind('<<TreeviewSelect>>', self.on_select)
         self.tree.bind('j', self.select_next_note)
         self.tree.bind('k', self.select_prev_note)
+        self.tree.bind('<Return>', self.focus_preview)
+        
+        # 绑定预览区域的ESC键
+        self.preview_content.bind('<Escape>', self.focus_list)
         
         # 添加滚动条
         scrollbar = ttk.Scrollbar(self.list_frame, orient=tk.VERTICAL, command=self.tree.yview)
@@ -623,6 +627,14 @@ class NoteApp:
         # 全选搜索框中的文本
         self.search_entry.select_range(0, tk.END)
     
+    def focus_preview(self, event=None):
+        # 聚焦到预览区域
+        self.preview_content.focus_set()
+    
+    def focus_list(self, event=None):
+        # 聚焦到笔记列表
+        self.tree.focus_set()
+    
     def delete_note(self):
         selected_items = self.tree.selection()
         if not selected_items:
@@ -689,6 +701,7 @@ class NoteApp:
             
         item = selected_items[0]
         note_id = self.tree.item(item)['values'][0]
+        self.current_note_id = note_id  # 存储当前笔记ID
         title, content, note_type = self.db.get_note_content(note_id)
         
         if title and content:
@@ -716,11 +729,84 @@ class NoteApp:
                 # 在文本框中插入图片
                 self.preview_content.image_create("1.0", image=self.current_image_photo)
                 self.preview_content.insert("1.0", "\n\n")  # 添加一些空行
+                self.preview_content.config(state="disabled")
+                
+                # 绑定复制图片快捷键
+                self.preview_content.bind('<Control-c>', self.copy_image_to_clipboard)
             else:
-                # 文本类型直接显示
+                # 文本类型直接显示并允许编辑
                 self.preview_content.insert("1.0", content)
+                self.preview_content.config(state="normal")
+                
+                # 绑定保存和复制快捷键
+                self.preview_content.bind('<Control-s>', self.save_text_content)
+                self.preview_content.bind('<Control-c>', self.copy_text_to_clipboard)
+
+    def copy_text_to_clipboard(self, event=None):
+        try:
+            # 获取选中的文本
+            selected_text = self.preview_content.get(tk.SEL_FIRST, tk.SEL_LAST)
+            pyperclip.copy(selected_text)
+            messagebox.showinfo("提示", "文本已复制到剪贴板")
+        except tk.TclError:  # 如果没有选中文本
+            try:
+                # 复制全部文本
+                all_text = self.preview_content.get("1.0", tk.END).strip()
+                pyperclip.copy(all_text)
+                messagebox.showinfo("提示", "全部文本已复制到剪贴板")
+            except:
+                messagebox.showerror("错误", "复制文本失败")
+    
+    def copy_image_to_clipboard(self, event=None):
+        if hasattr(self, 'current_image_data') and self.current_image_data:
+            # 将图片数据转换为PIL Image对象
+            img = Image.open(io.BytesIO(self.current_image_data))
             
-            self.preview_content.config(state="disabled")
+            try:
+                # 将图片转换为BMP格式
+                output = io.BytesIO()
+                if img.mode == 'RGBA':
+                    # 如果图片有透明通道，先将其转换为RGB
+                    img = img.convert('RGB')
+                img.save(output, 'BMP')
+                data = output.getvalue()[14:]  # 跳过BMP文件头
+                output.close()
+                
+                # 确保剪贴板已关闭
+                try:
+                    win32clipboard.CloseClipboard()
+                except:
+                    pass
+                
+                # 打开剪贴板并写入数据
+                win32clipboard.OpenClipboard()
+                win32clipboard.EmptyClipboard()
+                win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
+            except Exception as e:
+                messagebox.showerror("错误", f"复制图片失败: {str(e)}")
+                return
+            finally:
+                try:
+                    win32clipboard.CloseClipboard()
+                except:
+                    pass
+            
+            messagebox.showinfo("提示", "图片已复制到剪贴板")
+    
+    def save_text_content(self, event=None):
+        if hasattr(self, 'current_note_id'):
+            # 获取当前文本内容
+            content = self.preview_content.get("1.0", tk.END).strip()
+            # 获取当前笔记标题
+            title = self.preview_title.cget("text")
+            
+            # 更新数据库
+            self.db.update_note(self.current_note_id, title, content)
+            
+            # 刷新笔记列表
+            self.refresh_notes()
+            
+            messagebox.showinfo("提示", "笔记已保存")
 
 def main():
     root = tk.Tk()
