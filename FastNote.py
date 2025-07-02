@@ -278,7 +278,7 @@ class NoteApp:
                 <text x="32" y="42" font-family="Arial" font-size="40" fill="white" text-anchor="middle">N</text>
             </svg>
         '''
-        image = Image.open("icon.png")
+        image = Image.open("FastNote.ico")
         # 创建菜单项
         menu = (pystray.MenuItem('显示', self.show_window),
                 pystray.MenuItem('退出', self.quit_window))
